@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import static org.springframework.http.MediaType.TEXT_HTML_VALUE;
 
 @RestController
 @RequestMapping("/api/v1/members")
@@ -42,7 +41,7 @@ public class ApiV1MemberController {
     ) {
     }
 
-    @PostMapping
+    @PostMapping("/join")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "회원가입")
     public RsData<MemberDto> join(
@@ -63,6 +62,44 @@ public class ApiV1MemberController {
                 "201-1",
                 "%s님 환영합니다. 회원가입이 완료되었습니다.".formatted(member.getName()),
                 new MemberDto(member)
+        );
+    }
+
+
+    record MemberLoginReqBody(
+            @NotBlank
+            @Size(min = 2, max = 30)
+            String username,
+            @NotBlank
+            @Size(min = 2, max = 30)
+            String password
+    ) {
+    }
+
+    record MemberLoginResBody(
+            MemberDto item,
+            String apiKey
+    ) {
+    }
+
+    @PostMapping("/login")
+    @Operation(summary = "로그인")
+    public RsData<MemberLoginResBody> login(
+            @Valid @RequestBody MemberLoginReqBody reqBody
+    ) {
+        Member member = memberService.findByUsername(reqBody.username())
+                .orElseThrow(() -> new ServiceException("401-1", "존재하지 않는 아이디입니다."));
+
+        if (!member.getPassword().equals(reqBody.password()))
+            throw new ServiceException("401-2", "비밀번호가 일치하지 않습니다.");
+
+        return new RsData<>(
+                "200-1",
+                "%s님 환영합니다.".formatted(member.getName()),
+                new MemberLoginResBody(
+                        new MemberDto(member),
+                        member.getApiKey()
+                )
         );
     }
 }
